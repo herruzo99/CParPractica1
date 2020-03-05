@@ -295,11 +295,11 @@ int main(int argc, char *argv[]) {
 
 #ifdef DEBUG
 	/* 1.10. Print random seed of the initial cells */
-	/*
+	
 	printf("Initial cells random seeds: %d\n", num_cells );
 	for( i=0; i<num_cells; i++ )
 		printf("\tCell %d, Random seq: %hu,%hu,%hu\n", i, cells[i].random_seq[0], cells[i].random_seq[1], cells[i].random_seq[2] );
-	*/
+	
 #endif // DEBUG
 
 	/* 2. Start global timer */
