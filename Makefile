@@ -1,7 +1,7 @@
 
 CFLAGS= -I. -O3
 CFLAGS_DEBUG= -I. -g -O0
-LIBS=-lm
+LIBS=-lm -fopenmp
 
 evolution: evolution.c
 	gcc $(CFLAGS) $< -o $@ $(LIBS)
@@ -11,4 +11,3 @@ debug: evolution.c
 
 clean:
 	rm -f evolution debug
-
