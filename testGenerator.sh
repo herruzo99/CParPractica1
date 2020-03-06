@@ -1,3 +1,4 @@
+#TestGenerator es un script para genear las pruebas
 mkdir -p testBase
 for i in {1..30}
 do
