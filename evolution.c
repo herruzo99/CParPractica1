@@ -655,44 +655,36 @@ int main(int argc, char *argv[]) {
     printf("\tTime for main loop: %lf. The %f percentage of total time\n", timeML, timeML / ttotal * 100);
     printf("\n");
 
-    printf("\t Time for normal foor spread: %lf.\n", timeNormalSpreadingT);
+    printf("\t Time for normal food spread: %lf.\n", timeNormalSpreadingT);
     printf("\t  The %f percentage of total time\n", timeNormalSpreadingT / ttotal * 100);
-    printf("\t  The %f percentage of main loop time\n", timeNormalSpreadingT / timeML * 100);
     printf("\n");
 
     printf("\t Time for special food spread: %lf.\n", timeSpecialSpreadingT);
     printf("\t  The %f percentage of total time\n", timeSpecialSpreadingT / ttotal * 100);
-    printf("\t  The %f percentage of main loop time\n", timeSpecialSpreadingT /timeML*100);
     printf("\n");
 
     printf("\t Time for clearing culture cells: %lf.\n", timeClearingStructureT);
     printf("\t  The %f percentage of total time\n", timeClearingStructureT / ttotal * 100);
-    printf("\t  The %f percentage of main loop time\n", timeClearingStructureT/timeML*100);
     printf("\n");
 
     printf("\t Time for cell movement: %lf.\n", timeCellMovementT);
     printf("\t  The %f percentage of total time\n", timeCellMovementT / ttotal * 100);
-    printf("\t  The %f percentage of main loop time\n", timeCellMovementT /timeML*100);
     printf("\n");
 
     printf("\t Time for cell action: %lf.\n", timeCellActionsT);
     printf("\t  The %f percentage of total time\n", timeCellActionsT / ttotal * 100);
-    printf("\t  The %f percentage of main loop time\n", timeCellActionsT /timeML*100);
     printf("\n");
 
     printf("\t Time for reposition alive cells: %lf.\n", timeMovingAliveCellsT);
     printf("\t  The %f percentage of total time\n", timeMovingAliveCellsT / ttotal * 100);
-    printf("\t  The %f percentage of main loop time\n", timeMovingAliveCellsT /timeML*100);
     printf("\n");
 
     printf("\t Time for join new cells: %lf.\n", timeJoinCellsListT);
     printf("\t  The %f percentage of total time\n", timeJoinCellsListT / ttotal * 100);
-    printf("\t  The %f percentage of main loop time\n", timeJoinCellsListT /timeML*100);
     printf("\n");
 
     printf("\t Time for deccrease food: %lf.\n", timeDecreaseFoodT);
     printf("\t  The %f percentage of total time\n", timeDecreaseFoodT / ttotal * 100);
-    printf("\t  The %f percentage of main loop time\n", timeDecreaseFoodT /timeML*100);
     printf("\n");
 
     /* 6.2. Results: Number of iterations and other statistics */
