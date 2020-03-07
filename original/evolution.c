@@ -15,7 +15,6 @@
 #include<float.h>
 #include<stdbool.h>
 #include<cputils.h>
-#include<omp.h>
 
 /* Structure to store data of a cell */
 typedef struct {
@@ -312,39 +311,6 @@ int main(int argc, char *argv[]) {
  *
  */
 
-// 2.1 Time variables for single loop iterations
-    double timeInitCS;        // 3.1 Initialize culture surface
-    double timeInitCells;    // 3.2 Initialize cells
-
-    double timeML;  // 1º Loop of the Simultation. Main Loop
-    double timeNormalSpreadingL;        // NormalSpreading Loop
-    double timeSpecialSpreadingL;    // SpecialSpreading Loop
-    double timeClearingStructureL;    // ClearingStructure Loop
-    double timeCellMovementL;            // CellMovement Loop
-    double timeCellActionsL;                // CellActions Loop
-    double timeCleanFoodL;                // CleanFood Loop
-    double timeMovingAliveCellsL;        // MovingAliveCells Loop
-    double timeJoinCellsListL;            // JoinCellsList Loop
-    double timeDecreaseFoodL;                // DecreaseFood Loop
-
-    // 2.2 Time variables for total time invested in each loop
-
-    //THESE DON'T NEED A SPECIAL COUNTING
-    //timeInitCS;				// 3.1 Initialize culture surface
-    //timeInitCells;		// 3.2 Initialize cells
-    //timeML = 0.0f;  // 1º Loop of the Simultation. Main Loop
-
-    double timeNormalSpreadingT = 0.0f;        // NormalSpreading Loop
-    double timeSpecialSpreadingT = 0.0f;        // SpecialSpreading Loop
-    double timeClearingStructureT = 0.0f;    // ClearingStructure Loop
-    double timeCellMovementT = 0.0f;                // CellMovement Loop
-    double timeCellActionsT = 0.0f;                    // CellActions Loop
-    double timeCleanFoodT = 0.0f;                  // CleanFood Loop
-    double timeMovingAliveCellsT = 0.0f;        // MovingAliveCells Loop
-    double timeJoinCellsListT = 0.0f;            // JoinCellsList Loop
-    double timeDecreaseFoodT = 0.0f;                // DecreaseFood Loop
-
-
 	/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc( sizeof(float) * (size_t)rows * (size_t)columns );
 	culture_cells = (short *)malloc( sizeof(short) * (size_t)rows * (size_t)columns );
@@ -352,15 +318,10 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 		exit( EXIT_FAILURE );
 	}
-    //3.1
-    timeInitCS = omp_get_wtime();
 	for( i=0; i<rows; i++ )
 		for( j=0; j<columns; j++ ) 
 			accessMat( culture, i, j ) = 0.0;
-    timeInitCS = omp_get_wtime() - timeInitCS;
 
-    // 3.2
-    timeInitCells = omp_get_wtime();
 	for( i=0; i<num_cells; i++ ) {
 		cells[i].alive = true;
 		// Initial age: Between 1 and 20 
@@ -377,7 +338,6 @@ int main(int argc, char *argv[]) {
 		cells[i].choose_mov[1] = 0.34f;
 		cells[i].choose_mov[2] = 0.33f;
 	}
-    timeInitCells = omp_get_wtime() - timeInitCells;
 
 	// Statistics: Initialize total number of cells, and max. alive
 	sim_stat.history_total_cells = num_cells;
@@ -405,9 +365,6 @@ int main(int argc, char *argv[]) {
 	float current_max_food = 0.0f;
 	int num_cells_alive = num_cells;
 	int iter;
-
-    // First Loop: Main Loop
-    timeML = omp_get_wtime();
 	for( iter=0; iter<max_iter && current_max_food <= max_food && num_cells_alive > 0; iter++ ) {
 		int step_new_cells = 0;
 		int step_dead_cells = 0;
@@ -415,17 +372,13 @@ int main(int argc, char *argv[]) {
 		/* 4.1. Spreading new food */
 		// Across the whole culture
 		int num_new_sources = (int)(rows * columns * food_density);
-        timeNormalSpreadingL = omp_get_wtime();
 		for (i=0; i<num_new_sources; i++) {
 			int row = (int)(rows * erand48( food_random_seq ));
 			int col = (int)(columns * erand48( food_random_seq ));
 			float food = (float)( food_level * erand48( food_random_seq ));
 			accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 		}
-        timeNormalSpreadingL = omp_get_wtime() - timeNormalSpreadingL;
-        timeNormalSpreadingT += timeNormalSpreadingL;
-
-        // In the special food spot - SpecialSpreading Loop
+		// In the special food spot
 		if ( food_spot_active ) {
 			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
 			for (i=0; i<num_new_sources; i++) {
@@ -438,8 +391,6 @@ int main(int argc, char *argv[]) {
 
 		/* 4.2. Prepare ancillary data structures */
 		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
-        //  ClearingStructure Loop
-        timeClearingStructureL = omp_get_wtime();
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ ) 
 				accessMat( culture_cells, i, j ) = 0.0f;
@@ -449,12 +400,8 @@ int main(int argc, char *argv[]) {
 			fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 			exit( EXIT_FAILURE );
 		}
-        timeClearingStructureL = omp_get_wtime() - timeClearingStructureL;
-        timeClearingStructureT += timeClearingStructureL;
 
-        /* 4.3. Cell movements */
-        // CellMovement Loop
-        timeCellMovementL = omp_get_wtime();
+		/* 4.3. Cell movements */
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				cells[i].age ++;
@@ -509,14 +456,10 @@ int main(int argc, char *argv[]) {
 				food_to_share[i] = accessMat( culture, cells[i].pos_row, cells[i].pos_col );
 			}
 		} // End cell movements
-        timeCellMovementL = omp_get_wtime() - timeCellMovementL;
-        timeCellMovementT += timeCellMovementL;
-
+		
 		/* 4.4. Cell actions */
 		// Space for the list of new cells (maximum number of new cells is num_cells)
 		Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
-        // CellActions Loops
-        timeCellActionsL = omp_get_wtime();
 		if ( new_cells == NULL ) {
 			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
 			exit( EXIT_FAILURE );
@@ -561,20 +504,14 @@ int main(int argc, char *argv[]) {
 				}
 			}
 		} // End cell actions
-        timeCellActionsL = omp_get_wtime() - timeCellActionsL;
-        timeCellActionsT += timeCellActionsL;
 
 		/* 4.5. Clean ancillary data structures */
 		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
-        timeCleanFoodL = omp_get_wtime();    
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				accessMat( culture, cells[i].pos_row, cells[i].pos_col ) = 0.0f;
 			}
 		}
-        timeCleanFoodL = omp_get_wtime() - timeCleanFoodL;
-        timeCleanFoodT += timeCleanFoodL;
-
 		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
 		free( food_to_share );
 
@@ -582,7 +519,6 @@ int main(int argc, char *argv[]) {
 		// 4.6.1. Move alive cells to the left to substitute dead cells
 		int free_position = 0;
 		int alive_in_main_list = 0;
-        timeMovingAliveCellsL = omp_get_wtime();
 		for( i=0; i<num_cells; i++ ) {
 			if ( cells[i].alive ) {
 				alive_in_main_list ++;
@@ -592,38 +528,27 @@ int main(int argc, char *argv[]) {
 				free_position ++;
 			}
 		}
-        timeMovingAliveCellsL = omp_get_wtime() - timeMovingAliveCellsL;
-        timeMovingAliveCellsT += timeMovingAliveCellsL;
-
 		// 4.6.2. Reduce the storage space of the list to the current number of cells
 		num_cells = alive_in_main_list;
 		cells = (Cell *)realloc( cells, sizeof(Cell) * num_cells );
 
 		/* 4.7. Join cell lists: Old and new cells list */
-        // JoinCellsList Loop
 		if ( step_new_cells > 0 ) {
 			cells = (Cell *)realloc( cells, sizeof(Cell) * ( num_cells + step_new_cells ) );
-            timeJoinCellsListL = omp_get_wtime();
 			for (j=0; j<step_new_cells; j++)
 				cells[ num_cells + j ] = new_cells[ j ];
-            timeJoinCellsListL = omp_get_wtime() - timeJoinCellsListL;
-            timeJoinCellsListT += timeJoinCellsListL;
 			num_cells += step_new_cells;
 		}
 		free( new_cells );
 
 		/* 4.8. Decrease non-harvested food */
-        // DecreaseFood Loop
 		current_max_food = 0.0f;
-        timeDecreaseFoodL = omp_get_wtime();
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ ) {
 				accessMat( culture, i, j ) *= 0.95f; // Reduce 5%
 				if ( accessMat( culture, i, j ) > current_max_food ) 
 					current_max_food = accessMat( culture, i, j );
 			}
-        timeDecreaseFoodL = omp_get_wtime() - timeDecreaseFoodL;
-        timeDecreaseFoodT += timeDecreaseFoodL;
 
 		/* 4.9. Statistics */
 		// Statistics: Max food
@@ -642,7 +567,6 @@ int main(int argc, char *argv[]) {
 		print_status( iter, rows, columns, culture, num_cells, cells, num_cells_alive, sim_stat );
 #endif // DEBUG
 	}
-    timeML = omp_get_wtime() - timeML;
 
 	
 /*
@@ -676,49 +600,6 @@ int main(int argc, char *argv[]) {
 	printf("\n");
 	/* 6.1. Total computation time */
 	printf("Time: %lf\n", ttotal );
-    // 6.1.1 Disgragated time used on each loop
-    printf("\tTime for Init culture surface: %lf. The %f percentage of total time\n", timeInitCS,
-           timeInitCS / ttotal * 100);
-    printf("\tTime for Init cells: %lf. The %f percentage of total time\n", timeInitCells,
-           timeInitCells / ttotal * 100);
-    printf("\tTime for main loop: %lf. The %f percentage of total time\n", timeML, timeML / ttotal * 100);
-    printf("\n");
-
-    printf("\t Time for normal food spread: %lf.\n", timeNormalSpreadingT);
-    printf("\t  The %f percentage of total time\n", timeNormalSpreadingT / ttotal * 100);
-    printf("\n");
-
-    printf("\t Time for special food spread: %lf.\n", timeSpecialSpreadingT);
-    printf("\t  The %f percentage of total time\n", timeSpecialSpreadingT / ttotal * 100);
-    printf("\n");
-
-    printf("\t Time for clearing culture cells: %lf.\n", timeClearingStructureT);
-    printf("\t  The %f percentage of total time\n", timeClearingStructureT / ttotal * 100);
-    printf("\n");
-
-    printf("\t Time for cell movement: %lf.\n", timeCellMovementT);
-    printf("\t  The %f percentage of total time\n", timeCellMovementT / ttotal * 100);
-    printf("\n");
-
-    printf("\t Time for cell action: %lf.\n", timeCellActionsT);
-    printf("\t  The %f percentage of total time\n", timeCellActionsT / ttotal * 100);
-    printf("\n");
-
-    printf("\t Time for clean food: %lf.\n", timeCleanFoodT);
-    printf("\t  The %f percentage of total time\n", timeCleanFoodT / ttotal * 100);
-    printf("\n");
-
-    printf("\t Time for reposition alive cells: %lf.\n", timeMovingAliveCellsT);
-    printf("\t  The %f percentage of total time\n", timeMovingAliveCellsT / ttotal * 100);
-    printf("\n");
-
-    printf("\t Time for join new cells: %lf.\n", timeJoinCellsListT);
-    printf("\t  The %f percentage of total time\n", timeJoinCellsListT / ttotal * 100);
-    printf("\n");
-
-    printf("\t Time for deccrease food: %lf.\n", timeDecreaseFoodT);
-    printf("\t  The %f percentage of total time\n", timeDecreaseFoodT / ttotal * 100);
-    printf("\n");
 
 	/* 6.2. Results: Number of iterations and other statistics */
 	printf("Result: %d, ", iter);
