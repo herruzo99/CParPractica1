@@ -446,6 +446,7 @@ int main(int argc, char *argv[]) {
         /* 4.3. Cell movements */
         // CellMovement Loop
         timeCellMovementL = omp_get_wtime();
+//#pragma omp parallel for private(i) shared(cells, num_cells_alive, step_dead_cells)
         for (i = 0; i < num_cells; i++) {
             if (cells[i].alive) {
                 cells[i].age++;
@@ -493,6 +494,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 /* 4.3.4. Annotate that there is one more cell in this culture position */
+                //#pragma omp atomic
                 accessMat(culture_cells, cells[i].pos_row, cells[i].pos_col) += 1;
             }
         } // End cell movements

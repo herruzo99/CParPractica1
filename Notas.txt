@@ -1,5 +1,7 @@
 #6 de Marzo
 -Hemos creado una bateria de pruebas y un script para comprobar los futuros nuevos resultados frente a esa batería de pruebas.
+
 -Hemos añadido contadores por cada bucle para ver cuales son los que más tiempo tardan.
 	-Añadimos un porcentaje sobre el tiempo total y mas tarde tobre el tiempo que tarda el bucle principal, este último ha sido borrado ya que al final marcaba practicamente lo mismo que el otro.
-
+	
+	Una vez ejecutadas varias preubas comrpobamos que los dos bucles mas peso tienen son el de distribuir comida por la tabla y el de mover las células.
