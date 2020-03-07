@@ -454,12 +454,17 @@ int main(int argc, char *argv[]) {
 
         /* 4.3. Cell movements */
         // CellMovement Loop
-        timeCellMovementL = omp_get_wtime();
+        timeCellMovementL = omp_get_wtime(); 
+		//Se usa una variable auxiliar para poder hacer una reducción sobre ella
+        int history_max_age =  sim_stat.history_max_age;
+		long total = rows*columns;
+		//Para hacer reduction en un array hay que marcar el rango del array que se quiere reducir, como en este caso es todo el array se marca con [:tam_array]E
+        #pragma omp parallel for num_threads(8) reduction(-:num_cells_alive) reduction(+:step_dead_cells) reduction(+:culture_cells[:total]) reduction(max:history_max_age)
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				cells[i].age ++;
 				// Statistics: Max age of a cell in the simulation history
-				if ( cells[i].age > sim_stat.history_max_age ) sim_stat.history_max_age = cells[i].age;
+				if ( cells[i].age > history_max_age ) history_max_age = cells[i].age;
 
 				/* 4.3.1. Check if the cell has the needed energy to move or keep alive */
 				if ( cells[i].storage < 0.1f ) {
@@ -472,7 +477,7 @@ int main(int argc, char *argv[]) {
 				if ( cells[i].storage < 1.0f ) {
 					// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
 					cells[i].storage -= 0.2f;
-				}
+				}    
 				else {
 					// Consume energy to move
 					cells[i].storage -= 1.0f;
@@ -501,14 +506,14 @@ int main(int argc, char *argv[]) {
 					if ( cells[i].pos_row >= rows ) cells[i].pos_row -= rows;
 					if ( cells[i].pos_col < 0 ) cells[i].pos_col += columns;
 					if ( cells[i].pos_col >= columns ) cells[i].pos_col -= columns;
-				}
-
+            }
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
 				accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col ) += 1;
 				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
-				food_to_share[i] = accessMat( culture, cells[i].pos_row, cells[i].pos_col );
+				food_to_share[i] = accessMat( culture, cells[i].pos_row, cells[i].pos_col );      
 			}
 		} // End cell movements
+		sim_stat.history_max_age =  history_max_age;
         timeCellMovementL = omp_get_wtime() - timeCellMovementL;
         timeCellMovementT += timeCellMovementL;
 
