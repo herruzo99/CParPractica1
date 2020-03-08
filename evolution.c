@@ -427,14 +427,10 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
         timeNormalSpreadingL = omp_get_wtime();
 		#endif
-		#pragma parallel for default(none) \
-			shared(culture)
-			
 		for (i=0; i<num_new_sources; i++) {
 			int row = (int)(rows * erand48( food_random_seq ));
 			int col = (int)(columns * erand48( food_random_seq ));
 			float food = (float)( food_level * erand48( food_random_seq ));
-			#pragma omp atomic
 			accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 		}
 
@@ -460,6 +456,7 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
         timeClearingStructureL = omp_get_wtime();
 		#endif
+
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ )
 				accessMat( culture_cells, i, j ) = 0.0f;
