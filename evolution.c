@@ -483,6 +483,7 @@ int main(int argc, char *argv[]) {
     #pragma omp parallel for num_threads(8) shared(cells) \
 			reduction(-:num_cells_alive) reduction(+:step_dead_cells) \
 			reduction(+:culture_cells[:total]) reduction(max:history_max_age)
+
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				cells[i].age ++;
@@ -554,7 +555,7 @@ int main(int argc, char *argv[]) {
 			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
 			exit( EXIT_FAILURE );
 		}
-		#pragma omp parallel for shared(cells)
+		#pragma omp parallel for shared(cells, step_new_cells, num_cells_alive)
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				/* 4.4.1. Food harvesting */
@@ -646,14 +647,16 @@ int main(int argc, char *argv[]) {
         // JoinCellsList Loop
 		if ( step_new_cells > 0 ) {
 			cells = (Cell *)realloc( cells, sizeof(Cell) * ( num_cells + step_new_cells ) );
-    		#if !defined( CP_TABLON )
-	        timeJoinCellsListL = omp_get_wtime();
+    	#if !defined( CP_TABLON )
+	      timeJoinCellsListL = omp_get_wtime();
 			#endif
+
 			for (j=0; j<step_new_cells; j++)
 				cells[ num_cells + j ] = new_cells[ j ];
+
 			#if !defined( CP_TABLON )
-            timeJoinCellsListL = omp_get_wtime() - timeJoinCellsListL;
-            timeJoinCellsListT += timeJoinCellsListL;
+        timeJoinCellsListL = omp_get_wtime() - timeJoinCellsListL;
+        timeJoinCellsListT += timeJoinCellsListL;
 			#endif
 			num_cells += step_new_cells;
 		}
