@@ -100,3 +100,40 @@ Result: 600, 18, 207, 189, 44, 19, 3, 72, 41.124821
 
 
 
+./evolution 200 200 400 10000000 15 1000 444324 5776534 9542462 500
+
+Time: 12.281860
+  Time for Init culture surface: 0.000192. The 0.001562 percentage of total time
+  Time for Init cells: 0.000111. The 0.000900 percentage of total time
+  Time for main loop: 12.281530. The 99.997312 percentage of total time
+
+   Time for normal food spread: 4.634296.
+    The 37.732849 percentage of total time
+
+   Time for special food spread: 0.000000.
+    The 0.000000 percentage of total time
+
+   Time for clearing culture cells: 0.002318.
+    The 0.018869 percentage of total time
+
+   Time for cell movement: 4.368923.
+    The 35.572157 percentage of total time
+
+   Time for cell action: 1.847922.
+    The 15.045945 percentage of total time
+
+   Time for clean food: 0.739510.
+    The 6.021155 percentage of total time
+
+   Time for reposition alive cells: 0.587001.
+    The 4.779412 percentage of total time
+
+   Time for join new cells: 0.072873.
+    The 0.593339 percentage of total time
+
+   Time for deccrease food: 0.018033.
+    The 0.146829 percentage of total time
+
+Result: 400, 4096000, 4096000, 0, 4096000, 139264, 0, 31, 171605.609375
+
+Este es nuestro caso base para hacer pruebas de tiempos.
