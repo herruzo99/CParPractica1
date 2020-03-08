@@ -458,7 +458,7 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
         timeClearingStructureL = omp_get_wtime();
 		#endif
-
+		#pragma omp parallel for
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ )
 				accessMat( culture_cells, i, j ) = 0.0f;
@@ -482,7 +482,7 @@ int main(int argc, char *argv[]) {
         int history_max_age =  0;
 		int step_num_cells_alive = 0;
 		//Para hacer reduction en un array hay que marcar el rango del array que se quiere reducir, como en este caso es todo el array se marca con [:tam_array]E
-        #pragma omp parallel for num_threads(8) reduction(-:step_num_cells_alive) reduction(+:step_dead_cells) reduction(max:history_max_age)
+        #pragma omp parallel for reduction(-:step_num_cells_alive) reduction(+:step_dead_cells) reduction(max:history_max_age)
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				cells[i].age ++;
@@ -618,6 +618,7 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
         timeCleanFoodL = omp_get_wtime();
 		#endif
+		#pragma omp parallel for shared(culture)
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				accessMat( culture, cells[i].pos_row, cells[i].pos_col ) = 0.0f;
@@ -681,6 +682,7 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
         timeDecreaseFoodL = omp_get_wtime();
 		#endif
+		#pragma omp parallel for reduction(max:current_max_food)
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ ) {
 				accessMat( culture, i, j ) *= 0.95f; // Reduce 5%

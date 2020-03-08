@@ -137,3 +137,5 @@ Time: 12.281860
 Result: 400, 4096000, 4096000, 0, 4096000, 139264, 0, 31, 171605.609375
 
 Este es nuestro caso base para hacer pruebas de tiempos.
+
+-El bucle de la comida no es paralelizable por la forma de trabajar de rand48
