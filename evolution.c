@@ -480,7 +480,8 @@ int main(int argc, char *argv[]) {
 		//Para hacer reduction en un array hay que marcar el rango del array que se
 		//quiere reducir, como en este caso es todo el array se marca con [:tam_array]E
 
-    #pragma omp parallel for num_threads(8) shared(cells) \
+    #pragma omp parallel for num_threads(8) default(none) \
+			shared(cells) \
 			reduction(-:num_cells_alive) reduction(+:step_dead_cells) \
 			reduction(+:culture_cells[:total]) reduction(max:history_max_age)
 
@@ -555,7 +556,7 @@ int main(int argc, char *argv[]) {
 			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
 			exit( EXIT_FAILURE );
 		}
-		#pragma omp parallel for shared(cells, step_new_cells, num_cells_alive)
+		#pragma omp parallel for default(none) shared(cells, step_new_cells, num_cells_alive)
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				/* 4.4.1. Food harvesting */
