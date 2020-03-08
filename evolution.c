@@ -427,14 +427,11 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
         timeNormalSpreadingL = omp_get_wtime();
 		#endif
-		#pragma parallel for default(none) \
-			shared(culture)
 			
 		for (i=0; i<num_new_sources; i++) {
 			int row = (int)(rows * erand48( food_random_seq ));
 			int col = (int)(columns * erand48( food_random_seq ));
 			float food = (float)( food_level * erand48( food_random_seq ));
-			#pragma omp atomic
 			accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 		}
 
@@ -480,7 +477,7 @@ int main(int argc, char *argv[]) {
         timeCellMovementL = omp_get_wtime();
 		#endif
 		//Se usa una variable auxiliar para poder hacer una reducción sobre ella
-        int history_max_age =  sim_stat.history_max_age;
+        int history_max_age =  0;
 		int step_num_cells_alive = 0;
 		//Para hacer reduction en un array hay que marcar el rango del array que se quiere reducir, como en este caso es todo el array se marca con [:tam_array]E
         #pragma omp parallel for num_threads(8) reduction(-:step_num_cells_alive) reduction(+:step_dead_cells) reduction(max:history_max_age)
@@ -540,7 +537,9 @@ int main(int argc, char *argv[]) {
 		} // End cell movements
 		num_cells_alive += step_num_cells_alive;
 
+		if(sim_stat.history_max_age < history_max_age){
 		sim_stat.history_max_age =  history_max_age;
+		}
 		#if !defined( CP_TABLON )
 			timeCellMovementL = omp_get_wtime() - timeCellMovementL;
     	timeCellMovementT += timeCellMovementL;
@@ -557,7 +556,7 @@ int main(int argc, char *argv[]) {
 			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
 			exit( EXIT_FAILURE );
 		}
-		#pragma omp parallel for default(none) shared(cells, step_new_cells, num_cells_alive)
+		//#pragma omp parallel for shared(cells, step_new_cells, num_cells_alive)
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				/* 4.4.1. Food harvesting */
