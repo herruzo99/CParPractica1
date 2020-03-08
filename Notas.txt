@@ -88,3 +88,15 @@ Time: 0.444933
 Result: 600, 18, 207, 189, 44, 19, 3, 72, 41.124821
 
 - Voy a tratar de mejorar los bucles con un paralelismo muy simple y a observar como afecta estos cmabios a el tiempo de lprograma.
+
+
+#8 de marzo
+
+- Necesitamos hacer reducciones en cada valor de un array, en https://www.openmp.org/wp-content/uploads/openmp-4.5.pdf en la página 205 encontramos que las reducciones se pueden hacer en secciones de arrays, es decir array[init:fin] a partir de la version 4.5 de openmp.
+ esta versión es añadida a gcc en la version 6.1 https://www.openmp.org/resources/openmp-compilers-tools/ como el servidor usa la versión 7.2 de gcc entonces si que podemos reducir secciones de arrays
+
+- En http://frontendv.infor.uva.es/faq#6 encontramos que tenemos la flag CP_TABLON la cual está definida en el servidor, por lo tanto añadimos todas nuestras métricas de tiempo en #if !defined( CP_TABLON ) para que así no sean utilizadas y no nos añadan tiempo de cómputo
+ 
+
+
+
