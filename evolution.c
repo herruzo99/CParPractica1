@@ -365,6 +365,7 @@ int main(int argc, char *argv[]) {
 	#if !defined( CP_TABLON )
     timeInitCells = omp_get_wtime();
 	#endif
+	#pragma omp parallel for num_threads(8) shared(cells)
 	for( i=0; i<num_cells; i++ ) {
 		cells[i].alive = true;
 		// Initial age: Between 1 and 20
@@ -426,12 +427,17 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
         timeNormalSpreadingL = omp_get_wtime();
 		#endif
+		#pragma parallel for default(none) \
+			shared(culture)
+			
 		for (i=0; i<num_new_sources; i++) {
 			int row = (int)(rows * erand48( food_random_seq ));
 			int col = (int)(columns * erand48( food_random_seq ));
 			float food = (float)( food_level * erand48( food_random_seq ));
+			#pragma omp atomic
 			accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
 		}
+
 		#if !defined( CP_TABLON )
         timeNormalSpreadingL = omp_get_wtime() - timeNormalSpreadingL;
         timeNormalSpreadingT += timeNormalSpreadingL;
@@ -471,7 +477,7 @@ int main(int argc, char *argv[]) {
 			/* 4.3. Cell movements */
         // CellMovement Loop
 		#if !defined( CP_TABLON )
-        timeCellMovementL = omp_get_wtime(); 
+        timeCellMovementL = omp_get_wtime();
 		#endif
 		//Se usa una variable auxiliar para poder hacer una reducción sobre ella
         int history_max_age =  sim_stat.history_max_age;
@@ -495,7 +501,7 @@ int main(int argc, char *argv[]) {
 				if ( cells[i].storage < 1.0f ) {
 					// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
 					cells[i].storage -= 0.2f;
-				}    
+				}
 				else {
 					// Consume energy to move
 					cells[i].storage -= 1.0f;
@@ -529,28 +535,29 @@ int main(int argc, char *argv[]) {
 				#pragma omp atomic
 				accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col ) += 1;
 				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
-				food_to_share[i] = accessMat( culture, cells[i].pos_row, cells[i].pos_col );      
+				food_to_share[i] = accessMat( culture, cells[i].pos_row, cells[i].pos_col );
 			}
 		} // End cell movements
 		num_cells_alive += step_num_cells_alive;
+
 		sim_stat.history_max_age =  history_max_age;
 		#if !defined( CP_TABLON )
-		timeCellMovementL = omp_get_wtime() - timeCellMovementL;
-        timeCellMovementT += timeCellMovementL;
+			timeCellMovementL = omp_get_wtime() - timeCellMovementL;
+    	timeCellMovementT += timeCellMovementL;
 		#endif
 
 		/* 4.4. Cell actions */
 		// Space for the list of new cells (maximum number of new cells is num_cells)
 		Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
-        // CellActions Loops
+		// CellActions Loops
  		#if !defined( CP_TABLON )
-        timeCellActionsL = omp_get_wtime();
+      timeCellActionsL = omp_get_wtime();
 		#endif
 		if ( new_cells == NULL ) {
 			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
 			exit( EXIT_FAILURE );
 		}
-
+		#pragma omp parallel for default(none) shared(cells, step_new_cells, num_cells_alive)
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				/* 4.4.1. Food harvesting */
@@ -642,14 +649,16 @@ int main(int argc, char *argv[]) {
         // JoinCellsList Loop
 		if ( step_new_cells > 0 ) {
 			cells = (Cell *)realloc( cells, sizeof(Cell) * ( num_cells + step_new_cells ) );
-    		#if !defined( CP_TABLON )
-	        timeJoinCellsListL = omp_get_wtime();
+    	#if !defined( CP_TABLON )
+	      timeJoinCellsListL = omp_get_wtime();
 			#endif
+
 			for (j=0; j<step_new_cells; j++)
 				cells[ num_cells + j ] = new_cells[ j ];
+
 			#if !defined( CP_TABLON )
-            timeJoinCellsListL = omp_get_wtime() - timeJoinCellsListL;
-            timeJoinCellsListT += timeJoinCellsListL;
+        timeJoinCellsListL = omp_get_wtime() - timeJoinCellsListL;
+        timeJoinCellsListT += timeJoinCellsListL;
 			#endif
 			num_cells += step_new_cells;
 		}
@@ -713,7 +722,7 @@ int main(int argc, char *argv[]) {
 				cells[i].pos_col,
 				cells[i].mov_row,
 				cells[i].mov_col,
-				cells[i].choose_mov[0], 
+				cells[i].choose_mov[0],
 				cells[i].choose_mov[1],
 				cells[i].choose_mov[2],
 				cells[i].storage,
