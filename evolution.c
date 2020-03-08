@@ -365,6 +365,7 @@ int main(int argc, char *argv[]) {
 	#if !defined( CP_TABLON )
     timeInitCells = omp_get_wtime();
 	#endif
+	#pragma omp parallel for num_threads(8) shared(cells)
 	for( i=0; i<num_cells; i++ ) {
 		cells[i].alive = true;
 		// Initial age: Between 1 and 20
@@ -471,13 +472,17 @@ int main(int argc, char *argv[]) {
 			/* 4.3. Cell movements */
         // CellMovement Loop
 		#if !defined( CP_TABLON )
-        timeCellMovementL = omp_get_wtime(); 
+        timeCellMovementL = omp_get_wtime();
 		#endif
 		//Se usa una variable auxiliar para poder hacer una reducción sobre ella
         int history_max_age =  sim_stat.history_max_age;
 		long total = rows*columns;
-		//Para hacer reduction en un array hay que marcar el rango del array que se quiere reducir, como en este caso es todo el array se marca con [:tam_array]E
-        #pragma omp parallel for num_threads(8) reduction(-:num_cells_alive) reduction(+:step_dead_cells) reduction(+:culture_cells[:total]) reduction(max:history_max_age)
+		//Para hacer reduction en un array hay que marcar el rango del array que se
+		//quiere reducir, como en este caso es todo el array se marca con [:tam_array]E
+
+    #pragma omp parallel for num_threads(8) shared(cells) \
+			reduction(-:num_cells_alive) reduction(+:step_dead_cells) \
+			reduction(+:culture_cells[:total]) reduction(max:history_max_age)
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				cells[i].age ++;
@@ -495,7 +500,7 @@ int main(int argc, char *argv[]) {
 				if ( cells[i].storage < 1.0f ) {
 					// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
 					cells[i].storage -= 0.2f;
-				}    
+				}
 				else {
 					// Consume energy to move
 					cells[i].storage -= 1.0f;
@@ -528,27 +533,28 @@ int main(int argc, char *argv[]) {
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
 				accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col ) += 1;
 				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
-				food_to_share[i] = accessMat( culture, cells[i].pos_row, cells[i].pos_col );      
+				food_to_share[i] = accessMat( culture, cells[i].pos_row, cells[i].pos_col );
 			}
 		} // End cell movements
+
 		sim_stat.history_max_age =  history_max_age;
 		#if !defined( CP_TABLON )
-		timeCellMovementL = omp_get_wtime() - timeCellMovementL;
-        timeCellMovementT += timeCellMovementL;
+			timeCellMovementL = omp_get_wtime() - timeCellMovementL;
+    	timeCellMovementT += timeCellMovementL;
 		#endif
 
 		/* 4.4. Cell actions */
 		// Space for the list of new cells (maximum number of new cells is num_cells)
 		Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
-        // CellActions Loops
+		// CellActions Loops
  		#if !defined( CP_TABLON )
-        timeCellActionsL = omp_get_wtime();
+      timeCellActionsL = omp_get_wtime();
 		#endif
 		if ( new_cells == NULL ) {
 			fprintf(stderr,"-- Error allocating new cells structures for: %d cells\n", num_cells );
 			exit( EXIT_FAILURE );
 		}
-
+		#pragma omp parallel for shared(cells)
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				/* 4.4.1. Food harvesting */
@@ -711,7 +717,7 @@ int main(int argc, char *argv[]) {
 				cells[i].pos_col,
 				cells[i].mov_row,
 				cells[i].mov_col,
-				cells[i].choose_mov[0], 
+				cells[i].choose_mov[0],
 				cells[i].choose_mov[1],
 				cells[i].choose_mov[2],
 				cells[i].storage,
