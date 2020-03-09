@@ -578,7 +578,7 @@ int main(int argc, char *argv[]) {
 					int priv_new_cell;
 					//Se aumenta el numero de células nuevas y se guarda dicho valor, el cual es la posición en el vector new_cells
 					//Es una sección crítica ya que el valor de priv_new_cell tiene que ser step_new_cells + 1 e incrementar step_new_cells a la vez
-					#pragma omp critical
+					#pragma omp atomic capture
 					priv_new_cell = ++step_new_cells;
 
 					// New cell is a copy of parent cell
