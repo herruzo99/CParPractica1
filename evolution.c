@@ -563,7 +563,7 @@ int main(int argc, char *argv[]) {
 		step_num_cells_alive = 0;
 		#pragma omp parallel for shared(cells,step_new_cells) reduction(+:step_num_cells_alive) reduction(+:history_total_cells)
 		for (i=0; i<num_cells; i++) {
-			if ( cells[i].alive ) {
+			if ( cells[i].alive ) { 
 				/* 4.4.1. Food harvesting */
 				float food = food_to_share[i];
 				short count = accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col );

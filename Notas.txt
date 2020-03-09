@@ -139,3 +139,78 @@ Result: 400, 4096000, 4096000, 0, 4096000, 139264, 0, 31, 171605.609375
 Este es nuestro caso base para hacer pruebas de tiempos.
 
 -El bucle de la comida no es paralelizable por la forma de trabajar de rand48
+
+#9 de marzo
+
+-Prueba que tiene menos en cuenta el sembrado de comida
+./evolution 2000 200 490 10000000 0.005 10000 444324 5776534 9542462 500
+Time: 25.275400
+	Time for Init culture surface: 0.001889. The 0.007473 percentage of total time
+	Time for Init cells: 0.000127. The 0.000502 percentage of total time
+	Time for main loop: 25.273350. The 99.991890 percentage of total time
+
+	 Time for normal food spread: 0.029920.
+	  The 0.118376 percentage of total time
+
+	 Time for special food spread: 0.000000.
+	  The 0.000000 percentage of total time
+
+	 Time for clearing culture cells: 0.026964.
+	  The 0.106680 percentage of total time
+
+	 Time for cell movement: 13.450684.
+	  The 53.216502 percentage of total time
+
+	 Time for cell action: 5.395930.
+	  The 21.348543 percentage of total time
+
+	 Time for clean food: 2.261866.
+	  The 8.948884 percentage of total time
+
+	 Time for reposition alive cells: 3.611598.
+	  The 14.288987 percentage of total time
+
+	 Time for join new cells: 0.218466.
+	  The 0.864342 percentage of total time
+
+	 Time for deccrease food: 0.225181.
+	  The 0.890910 percentage of total time
+
+Result: 490, 10343185, 11617707, 1274522, 10824685, 419543, 59127, 75, 27567.607422
+
+Y en paralelo con la version actual de la leaderboard
+Time: 15.101927
+	Time for Init culture surface: 0.002116. The 0.014014 percentage of total time
+	Time for Init cells: 0.004121. The 0.027288 percentage of total time
+	Time for main loop: 15.095654. The 99.958461 percentage of total time
+
+	 Time for normal food spread: 0.060082.
+	  The 0.397842 percentage of total time
+
+	 Time for special food spread: 0.000000.
+	  The 0.000000 percentage of total time
+
+	 Time for clearing culture cells: 0.068101.
+	  The 0.450945 percentage of total time
+
+	 Time for cell movement: 4.984953.
+	  The 33.008724 percentage of total time
+
+	 Time for cell action: 4.261155.
+	  The 28.215972 percentage of total time
+
+	 Time for clean food: 1.683934.
+	  The 11.150457 percentage of total time
+
+	 Time for reposition alive cells: 3.682567.
+	  The 24.384751 percentage of total time
+
+	 Time for join new cells: 0.222317.
+	  The 1.472113 percentage of total time
+
+	 Time for deccrease food: 0.073371.
+	  The 0.485840 percentage of total time
+
+Result: 490, 10343185, 11617707, 1274522, 10824685, 419543, 59127, 75, 27567.607422
+
+
