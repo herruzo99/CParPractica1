@@ -419,7 +419,6 @@ int main(int argc, char *argv[]) {
     timeML = omp_get_wtime();
 	#endif
 	for( iter=0; iter<max_iter && current_max_food <= max_food && num_cells_alive > 0; iter++ ) {
-		int step_new_cells = 0;
 		int step_dead_cells = 0;
 
 		/* 4.1. Spreading new food */
@@ -560,8 +559,8 @@ int main(int argc, char *argv[]) {
 		}
 
 		int history_total_cells = 0;
-		step_num_cells_alive = 0;
-		#pragma omp parallel for shared(cells,step_new_cells) reduction(+:step_num_cells_alive) reduction(+:history_total_cells)
+		int step_new_cells = 0;
+		#pragma omp parallel for shared(cells,step_new_cells) reduction(+:history_total_cells)
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) { 
 				/* 4.4.1. Food harvesting */
@@ -573,40 +572,39 @@ int main(int argc, char *argv[]) {
 				/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
 				if ( cells[i].age > 30 && cells[i].storage > 20 ) {
 					// Split: Create new cell
-					step_num_cells_alive ++;
 					history_total_cells ++;
 					int priv_new_cell;
 					//Se aumenta el numero de células nuevas y se guarda dicho valor, el cual es la posición en el vector new_cells
 					//Es una sección crítica ya que el valor de priv_new_cell tiene que ser step_new_cells + 1 e incrementar step_new_cells a la vez
 					#pragma omp atomic capture
-					priv_new_cell = ++step_new_cells;
+					priv_new_cell = step_new_cells++;
 
 					// New cell is a copy of parent cell
-					new_cells[ priv_new_cell-1 ] = cells[i];
+					new_cells[ priv_new_cell ] = cells[i];
 
 					// Split energy stored and update age in both cells
 					cells[i].storage /= 2.0f;
-					new_cells[ priv_new_cell-1 ].storage /= 2.0f;
+					new_cells[ priv_new_cell ].storage /= 2.0f;
 					cells[i].age = 1;
-					new_cells[ priv_new_cell-1 ].age = 1;
+					new_cells[ priv_new_cell ].age = 1;
 
 					// Random seed for the new cell, obtained using the parent random sequence
-					new_cells[ priv_new_cell-1 ].random_seq[0] = (unsigned short)nrand48( cells[i].random_seq );
-					new_cells[ priv_new_cell-1 ].random_seq[1] = (unsigned short)nrand48( cells[i].random_seq );
-					new_cells[ priv_new_cell-1 ].random_seq[2] = (unsigned short)nrand48( cells[i].random_seq );
+					new_cells[ priv_new_cell ].random_seq[0] = (unsigned short)nrand48( cells[i].random_seq );
+					new_cells[ priv_new_cell ].random_seq[1] = (unsigned short)nrand48( cells[i].random_seq );
+					new_cells[ priv_new_cell ].random_seq[2] = (unsigned short)nrand48( cells[i].random_seq );
 
 					// Both cells start in random directions
 					cell_new_direction( &cells[i] );
-					cell_new_direction( &new_cells[ priv_new_cell-1 ] );
+					cell_new_direction( &new_cells[ priv_new_cell ] );
 
 					// Mutations of the movement genes in both cells
 					cell_mutation( &cells[i] );
-					cell_mutation( &new_cells[ priv_new_cell-1 ] );
+					cell_mutation( &new_cells[ priv_new_cell ] );
 					
 				}
 			}
 		} // End cell actions
-		num_cells_alive += step_num_cells_alive;
+		num_cells_alive += step_new_cells;
 		sim_stat.history_total_cells += history_total_cells;
  		#if !defined( CP_TABLON )
         timeCellActionsL = omp_get_wtime() - timeCellActionsL;
