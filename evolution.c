@@ -366,7 +366,7 @@ int main(int argc, char *argv[]) {
     timeInitCells = omp_get_wtime();
 	#endif
 	//Por debajo de 5000 células iniciales el overhead del paralelismo hace que tarde más que en secuencial
-	#pragma omp parallel for num_threads(8) shared(cells) if(5000) 
+	#pragma omp parallel for num_threads(8) shared(cells) if(num_cells> 1000) 
 	for( i=0; i<num_cells; i++ ) {
 		cells[i].alive = true;
 		// Initial age: Between 1 and 20
@@ -419,7 +419,6 @@ int main(int argc, char *argv[]) {
     timeML = omp_get_wtime();
 	#endif
 	for( iter=0; iter<max_iter && current_max_food <= max_food && num_cells_alive > 0; iter++ ) {
-		int step_dead_cells = 0;
 
 		/* 4.1. Spreading new food */
 		// Across the whole culture
@@ -479,9 +478,9 @@ int main(int argc, char *argv[]) {
 		#endif
 		//Se usa una variable auxiliar para poder hacer una reducción sobre ella
         int history_max_age =  0;
-		int step_num_cells_alive = 0;
+		int step_dead_cells = 0;
 		//Para hacer reduction en un array hay que marcar el rango del array que se quiere reducir, como en este caso es todo el array se marca con [:tam_array]E
-        #pragma omp parallel for reduction(-:step_num_cells_alive) reduction(+:step_dead_cells) reduction(max:history_max_age) 
+        #pragma omp parallel for reduction(+:step_dead_cells) reduction(max:history_max_age) 
 		for (i=0; i<num_cells; i++) {
 				cells[i].age ++;
 				// Statistics: Max age of a cell in the simulation history
@@ -491,7 +490,6 @@ int main(int argc, char *argv[]) {
 				if ( cells[i].storage < 0.1f ) {
 					// Cell has died
 					cells[i].alive = false;
-					step_num_cells_alive --;
 					step_dead_cells ++;
 					continue;
 				}
@@ -534,7 +532,7 @@ int main(int argc, char *argv[]) {
 				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
 				food_to_share[i] = accessMat( culture, cells[i].pos_row, cells[i].pos_col );
 		} // End cell movements
-		num_cells_alive += step_num_cells_alive;
+		num_cells_alive -= step_dead_cells;
 
 		if(sim_stat.history_max_age < history_max_age){
 		sim_stat.history_max_age =  history_max_age;
