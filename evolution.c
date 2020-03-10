@@ -366,7 +366,7 @@ int main(int argc, char *argv[]) {
     timeInitCells = omp_get_wtime();
 	#endif
 	//Por debajo de 5000 células iniciales el overhead del paralelismo hace que tarde más que en secuencial
-	#pragma omp parallel for num_threads(8) shared(cells) if(5000)
+	#pragma omp parallel for num_threads(8) shared(cells) if(5000) 
 	for( i=0; i<num_cells; i++ ) {
 		cells[i].alive = true;
 		// Initial age: Between 1 and 20
@@ -457,7 +457,7 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
         timeClearingStructureL = omp_get_wtime();
 		#endif
-		#pragma omp parallel for
+		#pragma omp parallel for collapse(2) 
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ )
 				accessMat( culture_cells, i, j ) = 0.0f;
@@ -481,9 +481,8 @@ int main(int argc, char *argv[]) {
         int history_max_age =  0;
 		int step_num_cells_alive = 0;
 		//Para hacer reduction en un array hay que marcar el rango del array que se quiere reducir, como en este caso es todo el array se marca con [:tam_array]E
-        #pragma omp parallel for reduction(-:step_num_cells_alive) reduction(+:step_dead_cells) reduction(max:history_max_age)
+        #pragma omp parallel for reduction(-:step_num_cells_alive) reduction(+:step_dead_cells) reduction(max:history_max_age) 
 		for (i=0; i<num_cells; i++) {
-			if ( cells[i].alive ) {
 				cells[i].age ++;
 				// Statistics: Max age of a cell in the simulation history
 				if ( cells[i].age > history_max_age ) history_max_age = cells[i].age;
@@ -534,7 +533,6 @@ int main(int argc, char *argv[]) {
 				accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col ) += 1;
 				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
 				food_to_share[i] = accessMat( culture, cells[i].pos_row, cells[i].pos_col );
-			}
 		} // End cell movements
 		num_cells_alive += step_num_cells_alive;
 
@@ -560,7 +558,7 @@ int main(int argc, char *argv[]) {
 
 		int history_total_cells = 0;
 		int step_new_cells = 0;
-		#pragma omp parallel for shared(cells,step_new_cells) reduction(+:history_total_cells)
+		#pragma omp parallel for shared(cells,step_new_cells) reduction(+:history_total_cells) 
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) { 
 				/* 4.4.1. Food harvesting */
@@ -616,7 +614,7 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
         timeCleanFoodL = omp_get_wtime();
 		#endif
-		#pragma omp parallel for shared(culture)
+		#pragma omp parallel for shared(culture) 
 		for (i=0; i<num_cells; i++) {
 			if ( cells[i].alive ) {
 				accessMat( culture, cells[i].pos_row, cells[i].pos_col ) = 0.0f;
@@ -680,7 +678,7 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
         timeDecreaseFoodL = omp_get_wtime();
 		#endif
-		#pragma omp parallel for reduction(max:current_max_food)
+		#pragma omp parallel for reduction(max:current_max_food) collapse(2) 
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ ) {
 				accessMat( culture, i, j ) *= 0.95f; // Reduce 5%
