@@ -214,3 +214,42 @@ Time: 15.101927
 Result: 490, 10343185, 11617707, 1274522, 10824685, 419543, 59127, 75, 27567.607422
 
 
+#11 de Marzo
+herruzo99@herruzopc:~/Documentos/uni/cpar/CParPractica1$ ./evolution 2000 200 490 10000000 0.005 10000 444324 5776534 9542462 500
+
+Time: 15.884700
+	Time for Init culture surface: 0.004382. The 0.027586 percentage of total time
+	Time for Init cells: 0.000162. The 0.001017 percentage of total time
+	Time for main loop: 15.880113. The 99.971121 percentage of total time
+
+	 Time for normal food spread: 0.036836.
+	  The 0.231897 percentage of total time
+
+	 Time for special food spread: 0.000000.
+	  The 0.000000 percentage of total time
+
+	 Time for clearing culture cells: 0.125966.
+	  The 0.793004 percentage of total time
+
+	 Time for cell movement: 4.484492.
+	  The 28.231515 percentage of total time
+
+	 Time for cell action: 4.147743.
+	  The 26.111562 percentage of total time
+
+	 Time for reposition alive cells: 6.726297.
+	  The 42.344502 percentage of total time
+
+	 Time for join new cells: 0.205438.
+	  The 1.293307 percentage of total time
+
+	 Time for deccrease food: 0.112784.
+	  The 0.710017 percentage of total time
+
+Result: 490, 8243158, 10134390, 1891232, 8836033, 402300, 65486, 71, 27901.656250
+herruzo99@herruzopc:~/Documentos/uni/cpar/CParPractica1$ gcc -I. -g -O0 -DDEBUG evolution.c -o debug -lm -fopenmp^C
+herruzo99@herruzopc:~/Documentos/uni/cpar/CParPractica1$ make
+gcc -I. -O3 evolution.c -o evolution -lm -fopenmp
+herruzo99@herruzopc:~/Documentos/uni/cpar/CParPractica1$ ./evolution 2000 200 490 10000000 0.005 10000 444324 5776534 9542462 500
+Violación de segmento (`core' generado)
+

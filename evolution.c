@@ -340,10 +340,22 @@ int main(int argc, char *argv[]) {
  *
  */
 	double *food_seeds;
+
 	/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc( sizeof(float) * (size_t)rows * (size_t)columns );
 	culture_cells = (short *)malloc( sizeof(short) * (size_t)rows * (size_t)columns );
 	food_seeds = (double*)malloc((int)(rows * columns * food_density)*sizeof(double)*3);
+
+	double *food_seeds_spot;
+	if ( food_spot_active ) {
+
+	food_seeds_spot = (double*)malloc((int)(food_spot_size_rows * food_spot_size_cols * food_spot_density)*sizeof(double)*3);
+	if ( food_seeds_spot == NULL) {
+		fprintf(stderr,"-- Error allocating food seed structures for size: %d x %d \n", rows, columns );
+		exit( EXIT_FAILURE );
+	}
+}
+
 	if ( culture == NULL || culture_cells == NULL ) {
 		fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 		exit( EXIT_FAILURE );
@@ -424,6 +436,7 @@ int main(int argc, char *argv[]) {
 	int num_new_sources = (int)(rows * columns * food_density);
 	int num_new_sources_spot = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
 
+	int desp = 0;
 	for( iter=0; iter<max_iter && current_max_food <= max_food && num_cells_alive > 0; iter++ ) {
 		/* 4.1. Spreading new food */
 		// Across the whole culture
@@ -457,10 +470,16 @@ int main(int argc, char *argv[]) {
         // In the special food spot - SpecialSpreading Loop
 		if ( food_spot_active ) {
 			for (i=0; i<num_new_sources_spot; i++) {
-				int row = food_spot_row + (int)(food_spot_size_rows * erand48( food_spot_random_seq ));
-				int col = food_spot_col + (int)(food_spot_size_cols * erand48( food_spot_random_seq ));
-				float food = (float)( food_spot_level * erand48( food_spot_random_seq ));
-				accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
+				food_seeds_spot[3*i] = erand48( food_spot_random_seq );
+				food_seeds_spot[3*i+1] = erand48( food_spot_random_seq );
+				food_seeds_spot[3*i+2] = erand48( food_spot_random_seq );
+			}
+
+			for (i=0; i<num_new_sources_spot; i++) {
+				int row = food_spot_row + (int)(food_spot_size_rows * food_seeds_spot[3*i]);
+				int col = food_spot_col + (int)(food_spot_size_cols * food_seeds_spot[3*i+1]);
+				float food = (float)( food_spot_level * food_seeds_spot[3*i+2]);
+				accessMat( culture, row, col ) += food;
 			}
 		}
 
@@ -484,6 +503,8 @@ int main(int argc, char *argv[]) {
 			fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 			exit( EXIT_FAILURE );
 		}
+
+
 			/* 4.3. Cell movements */
         // CellMovement Loop
 		#if !defined( CP_TABLON )
@@ -566,6 +587,11 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
 				timeMovingAliveCellsL = omp_get_wtime();
 		#endif
+	int *desplazamiento = (int *)malloc( sizeof(int) * num_cells );
+	if ( desplazamiento == NULL ) {
+		fprintf(stderr,"-- Error allocating desplazamiento structures for size: %d \n", num_cells );
+		exit( EXIT_FAILURE );
+	}
 		for( i=0; i<num_cells; i++ ) {
 			if ( cells[i].alive ) {
 				if ( free_position != i ) {
@@ -575,6 +601,7 @@ int main(int argc, char *argv[]) {
 				free_position ++;
 			}
 		}
+
 		#if !defined( CP_TABLON )
 				timeMovingAliveCellsL = omp_get_wtime() - timeMovingAliveCellsL;
 				timeMovingAliveCellsT += timeMovingAliveCellsL;
