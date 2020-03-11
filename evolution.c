@@ -87,13 +87,11 @@ void cell_mutation( Cell *cell ) {
 			break;
 		case 2:
 			mutation_value = cell->choose_mov[2] * mutation_percentage;
-			cell->choose_mov[2] -= mutation_value;
 			cell->choose_mov[1] += mutation_value;
 			break;
 		case 3:
 			mutation_value = cell->choose_mov[1] * mutation_percentage;
 			cell->choose_mov[1] -= mutation_value;
-			cell->choose_mov[2] += mutation_value;
 			break;
 		default:
 			fprintf(stderr,"Error: Imposible type of mutation\n");
@@ -316,7 +314,6 @@ int main(int argc, char *argv[]) {
   double timeClearingStructureL;    // ClearingStructure Loop
   double timeCellMovementL;            // CellMovement Loop
   double timeCellActionsL;                // CellActions Loop
-  double timeCleanFoodL;                // CleanFood Loop
   double timeMovingAliveCellsL;        // MovingAliveCells Loop
   double timeJoinCellsListL;            // JoinCellsList Loop
   double timeDecreaseFoodL;                // DecreaseFood Loop
@@ -333,7 +330,6 @@ int main(int argc, char *argv[]) {
   double timeClearingStructureT = 0.0f;    // ClearingStructure Loop
   double timeCellMovementT = 0.0f;                // CellMovement Loop
   double timeCellActionsT = 0.0f;                    // CellActions Loop
-  double timeCleanFoodT = 0.0f;                  // CleanFood Loop
   double timeMovingAliveCellsT = 0.0f;        // MovingAliveCells Loop
   double timeJoinCellsListT = 0.0f;            // JoinCellsList Loop
   double timeDecreaseFoodT = 0.0f;                // DecreaseFood Loop
@@ -343,18 +339,24 @@ int main(int argc, char *argv[]) {
  * START HERE: DO NOT CHANGE THE CODE ABOVE THIS POINT
  *
  */
-
+	double *food_seeds;
 	/* 3. Initialize culture surface and initial cells */
 	culture = (float *)malloc( sizeof(float) * (size_t)rows * (size_t)columns );
 	culture_cells = (short *)malloc( sizeof(short) * (size_t)rows * (size_t)columns );
+	food_seeds = (double*)malloc((int)(rows * columns * food_density)*sizeof(double)*3);
 	if ( culture == NULL || culture_cells == NULL ) {
 		fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
+		exit( EXIT_FAILURE );
+	}
+	if ( food_seeds == NULL) {
+		fprintf(stderr,"-- Error allocating food seed structures for size: %d x %d \n", rows, columns );
 		exit( EXIT_FAILURE );
 	}
     //3.1
 	#if !defined( CP_TABLON )
     timeInitCS = omp_get_wtime();
 	#endif
+	#pragma omp parallel for collapse(2)
 	for( i=0; i<rows; i++ )
 		for( j=0; j<columns; j++ )
 			accessMat( culture, i, j ) = 0.0;
@@ -366,7 +368,7 @@ int main(int argc, char *argv[]) {
     timeInitCells = omp_get_wtime();
 	#endif
 	//Por debajo de 5000 células iniciales el overhead del paralelismo hace que tarde más que en secuencial
-	#pragma omp parallel for num_threads(8) shared(cells) if(num_cells> 1000) 
+	#pragma omp parallel for shared(cells) if(num_cells> 1000)
 	for( i=0; i<num_cells; i++ ) {
 		cells[i].alive = true;
 		// Initial age: Between 1 and 20
@@ -414,26 +416,39 @@ int main(int argc, char *argv[]) {
 	int num_cells_alive = num_cells;
 	int iter;
 
+
     // First Loop: Main Loop
 	#if !defined( CP_TABLON )
     timeML = omp_get_wtime();
 	#endif
-	for( iter=0; iter<max_iter && current_max_food <= max_food && num_cells_alive > 0; iter++ ) {
+	int num_new_sources = (int)(rows * columns * food_density);
+	int num_new_sources_spot = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
 
+	for( iter=0; iter<max_iter && current_max_food <= max_food && num_cells_alive > 0; iter++ ) {
 		/* 4.1. Spreading new food */
 		// Across the whole culture
-		int num_new_sources = (int)(rows * columns * food_density);
 		#if !defined( CP_TABLON )
         timeNormalSpreadingL = omp_get_wtime();
 		#endif
 
 		for (i=0; i<num_new_sources; i++) {
-			int row = (int)(rows * erand48( food_random_seq ));
-			int col = (int)(columns * erand48( food_random_seq ));
-			float food = (float)( food_level * erand48( food_random_seq ));
-			accessMat( culture, row, col ) = accessMat( culture, row, col ) + food;
+			food_seeds[3*i] = erand48( food_random_seq );
+			food_seeds[3*i+1] = erand48( food_random_seq );
+			food_seeds[3*i+2] = erand48( food_random_seq );
 		}
 
+			//#pragma omp parallel for
+			for (i=0; i<num_new_sources; i++) {
+			int row = (int)(rows * food_seeds[3*i]);
+			int col = (int)(columns *food_seeds[3*i+1]);
+			float food = (float)( food_level * food_seeds[3*i+2]);
+			//#pragma omp atomic
+			accessMat( culture, row, col ) += food;
+		}
+	//	printf("ITER %d\n", iter);
+	//	for(i = 0; i < rows; i++)
+	//		for(j=0; j < columns; j++)
+	//			printf("%f\n", accessMat( culture, i, j ));
 		#if !defined( CP_TABLON )
         timeNormalSpreadingL = omp_get_wtime() - timeNormalSpreadingL;
         timeNormalSpreadingT += timeNormalSpreadingL;
@@ -441,8 +456,7 @@ int main(int argc, char *argv[]) {
 
         // In the special food spot - SpecialSpreading Loop
 		if ( food_spot_active ) {
-			num_new_sources = (int)(food_spot_size_rows * food_spot_size_cols * food_spot_density);
-			for (i=0; i<num_new_sources; i++) {
+			for (i=0; i<num_new_sources_spot; i++) {
 				int row = food_spot_row + (int)(food_spot_size_rows * erand48( food_spot_random_seq ));
 				int col = food_spot_col + (int)(food_spot_size_cols * erand48( food_spot_random_seq ));
 				float food = (float)( food_spot_level * erand48( food_spot_random_seq ));
@@ -456,21 +470,20 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
         timeClearingStructureL = omp_get_wtime();
 		#endif
-		#pragma omp parallel for collapse(2) 
+		#pragma omp parallel for collapse(2)
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ )
 				accessMat( culture_cells, i, j ) = 0.0f;
- 		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
+		#if !defined( CP_TABLON )
+        timeClearingStructureL = omp_get_wtime() - timeClearingStructureL;
+        timeClearingStructureT += timeClearingStructureL;
+		#endif
+		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
 		float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
 		if ( culture == NULL || culture_cells == NULL ) {
 			fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
 			exit( EXIT_FAILURE );
 		}
-		#if !defined( CP_TABLON )
-        timeClearingStructureL = omp_get_wtime() - timeClearingStructureL;
-        timeClearingStructureT += timeClearingStructureL;
-		#endif
-
 			/* 4.3. Cell movements */
         // CellMovement Loop
 		#if !defined( CP_TABLON )
@@ -480,7 +493,7 @@ int main(int argc, char *argv[]) {
         int history_max_age =  0;
 		int step_dead_cells = 0;
 		//Para hacer reduction en un array hay que marcar el rango del array que se quiere reducir, como en este caso es todo el array se marca con [:tam_array]E
-        #pragma omp parallel for reduction(+:step_dead_cells) reduction(max:history_max_age) 
+        #pragma omp parallel for reduction(+:step_dead_cells) reduction(max:history_max_age)
 		for (i=0; i<num_cells; i++) {
 				cells[i].age ++;
 				// Statistics: Max age of a cell in the simulation history
@@ -544,8 +557,29 @@ int main(int argc, char *argv[]) {
 
 		/* 4.4. Cell actions */
 		// Space for the list of new cells (maximum number of new cells is num_cells)
-		Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells );
+		Cell *new_cells = (Cell *)malloc( sizeof(Cell) * num_cells_alive );
 		// CellActions Loops
+
+		/* 4.6. Clean dead cells from the original list */
+		// 4.6.1. Move alive cells to the left to substitute dead cells
+		int free_position = 0;
+		#if !defined( CP_TABLON )
+				timeMovingAliveCellsL = omp_get_wtime();
+		#endif
+		for( i=0; i<num_cells; i++ ) {
+			if ( cells[i].alive ) {
+				if ( free_position != i ) {
+					cells[free_position] = cells[i];
+					food_to_share[free_position] = food_to_share[i];
+				}
+				free_position ++;
+			}
+		}
+		#if !defined( CP_TABLON )
+				timeMovingAliveCellsL = omp_get_wtime() - timeMovingAliveCellsL;
+				timeMovingAliveCellsT += timeMovingAliveCellsL;
+		#endif
+
  		#if !defined( CP_TABLON )
       timeCellActionsL = omp_get_wtime();
 		#endif
@@ -556,9 +590,8 @@ int main(int argc, char *argv[]) {
 
 		int history_total_cells = 0;
 		int step_new_cells = 0;
-		#pragma omp parallel for shared(cells,step_new_cells) reduction(+:history_total_cells) 
-		for (i=0; i<num_cells; i++) {
-			if ( cells[i].alive ) { 
+		#pragma omp parallel for shared(cells,step_new_cells) reduction(+:history_total_cells)
+		for (i=0; i<num_cells_alive; i++) {
 				/* 4.4.1. Food harvesting */
 				float food = food_to_share[i];
 				short count = accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col );
@@ -596,65 +629,32 @@ int main(int argc, char *argv[]) {
 					// Mutations of the movement genes in both cells
 					cell_mutation( &cells[i] );
 					cell_mutation( &new_cells[ priv_new_cell ] );
-					
+
 				}
-			}
+				accessMat( culture, cells[i].pos_row, cells[i].pos_col ) = 0.0f;
+				//accessMat( culture, cells[i].pos_row, cells[i].pos_col ) = 0.0f;
 		} // End cell actions
-		num_cells_alive += step_new_cells;
 		sim_stat.history_total_cells += history_total_cells;
  		#if !defined( CP_TABLON )
         timeCellActionsL = omp_get_wtime() - timeCellActionsL;
         timeCellActionsT += timeCellActionsL;
 		#endif
 
-		/* 4.5. Clean ancillary data structures */
-		/* 4.5.1. Clean the food consumed by the cells in the culture data structure */
-		#if !defined( CP_TABLON )
-        timeCleanFoodL = omp_get_wtime();
-		#endif
-		#pragma omp parallel for shared(culture) 
-		for (i=0; i<num_cells; i++) {
-			if ( cells[i].alive ) {
-				accessMat( culture, cells[i].pos_row, cells[i].pos_col ) = 0.0f;
-			}
-		}
-		#if !defined( CP_TABLON )
-        timeCleanFoodL = omp_get_wtime() - timeCleanFoodL;
-        timeCleanFoodT += timeCleanFoodL;
-		#endif
 
 		/* 4.5.2. Free the ancillary data structure to store the food to be shared */
 		free( food_to_share );
 
-		/* 4.6. Clean dead cells from the original list */
-		// 4.6.1. Move alive cells to the left to substitute dead cells
-		int free_position = 0;
-		int alive_in_main_list = 0;
-		#if !defined( CP_TABLON )
-        timeMovingAliveCellsL = omp_get_wtime();
-		#endif
-		for( i=0; i<num_cells; i++ ) {
-			if ( cells[i].alive ) {
-				alive_in_main_list ++;
-				if ( free_position != i ) {
-					cells[free_position] = cells[i];
-				}
-				free_position ++;
-			}
-		}
-		#if !defined( CP_TABLON )
-        timeMovingAliveCellsL = omp_get_wtime() - timeMovingAliveCellsL;
-        timeMovingAliveCellsT += timeMovingAliveCellsL;
-		#endif
+
 
 		// 4.6.2. Reduce the storage space of the list to the current number of cells
-		num_cells = alive_in_main_list;
-		cells = (Cell *)realloc( cells, sizeof(Cell) * num_cells );
+		num_cells = num_cells_alive;
+		num_cells_alive += step_new_cells;
+
+		cells = (Cell *)realloc( cells, sizeof(Cell) * ( num_cells + step_new_cells ) );
 
 		/* 4.7. Join cell lists: Old and new cells list */
         // JoinCellsList Loop
 		if ( step_new_cells > 0 ) {
-			cells = (Cell *)realloc( cells, sizeof(Cell) * ( num_cells + step_new_cells ) );
     	#if !defined( CP_TABLON )
 	      timeJoinCellsListL = omp_get_wtime();
 			#endif
@@ -676,7 +676,7 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
         timeDecreaseFoodL = omp_get_wtime();
 		#endif
-		#pragma omp parallel for reduction(max:current_max_food) collapse(2) 
+		#pragma omp parallel for reduction(max:current_max_food) collapse(2)
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ ) {
 				accessMat( culture, i, j ) *= 0.95f; // Reduce 5%
@@ -768,10 +768,6 @@ int main(int argc, char *argv[]) {
 
     printf("\t Time for cell action: %lf.\n", timeCellActionsT);
     printf("\t  The %f percentage of total time\n", timeCellActionsT / ttotal * 100);
-    printf("\n");
-
-    printf("\t Time for clean food: %lf.\n", timeCleanFoodT);
-    printf("\t  The %f percentage of total time\n", timeCleanFoodT / ttotal * 100);
     printf("\n");
 
     printf("\t Time for reposition alive cells: %lf.\n", timeMovingAliveCellsT);
