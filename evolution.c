@@ -48,59 +48,6 @@ typedef struct {
  */
 #define accessMat( arr, exp1, exp2 )	arr[ (int)(exp1) * columns + (int)(exp2) ]
 
-/*
- * Function: Choose a new direction of movement for a cell
- * 	This function can be changed and/or optimized by the students
- */
-void cell_new_direction( Cell *cell ) {
-	float angle = (float)(2 * M_PI * erand48( cell->random_seq ));
-	cell->mov_row = sinf( angle );
-	cell->mov_col = cosf( angle );
-}
-
-/*
- * Function: Mutation of the movement genes on a new cell
- * 	This function can be changed and/or optimized by the students
- */
-void cell_mutation( Cell *cell ) {
-	/* 1. Select which genes change:
-	 	0 Left grows taking part of the Advance part
-	 	1 Advance grows taking part of the Left part
-	 	2 Advance grows taking part of the Right part
-	 	3 Right grows taking part of the Advance part
-	*/
-	int mutation_type = (int)(4 * erand48( cell->random_seq ));
-	/* 2. Select the amount of mutation (up to 50%) */
-	float mutation_percentage = (float)(0.5 * erand48( cell->random_seq ));
-	/* 3. Apply the mutation */
-	float mutation_value;
-	switch( mutation_type ) {
-		case 0:
-			mutation_value = cell->choose_mov[1] * mutation_percentage;
-			cell->choose_mov[1] -= mutation_value;
-			cell->choose_mov[0] += mutation_value;
-			break;
-		case 1:
-			mutation_value = cell->choose_mov[0] * mutation_percentage;
-			cell->choose_mov[0] -= mutation_value;
-			cell->choose_mov[1] += mutation_value;
-			break;
-		case 2:
-			mutation_value = cell->choose_mov[2] * mutation_percentage;
-			cell->choose_mov[1] += mutation_value;
-			break;
-		case 3:
-			mutation_value = cell->choose_mov[1] * mutation_percentage;
-			cell->choose_mov[1] -= mutation_value;
-			break;
-		default:
-			fprintf(stderr,"Error: Imposible type of mutation\n");
-			exit( EXIT_FAILURE );
-	}
-	/* 4. Correct potential precision problems */
-	cell->choose_mov[2] = 1.0f - cell->choose_mov[1] - cell->choose_mov[0];
-}
-
 #ifdef DEBUG
 /*
  * Function: Print the current state of the simulation
@@ -391,7 +338,9 @@ int main(int argc, char *argv[]) {
 		cells[i].pos_row = (float)(rows * erand48( cells[i].random_seq ));
 		cells[i].pos_col = (float)(columns * erand48( cells[i].random_seq ));
 		// Movement direction: Unity vector in a random direction
-		cell_new_direction( &cells[i] );
+			float angle = (float)(2 * M_PI * erand48( cells[i].random_seq ));
+		 cells[i].mov_row = sinf( angle );
+		 cells[i].mov_col = cosf( angle );
 		// Movement genes: Probabilities of advancing or changing direction: The sum should be 1.00
 		cells[i].choose_mov[0] = 0.33f;
 		cells[i].choose_mov[1] = 0.34f;
@@ -461,7 +410,7 @@ int main(int argc, char *argv[]) {
 	//	printf("ITER %d\n", iter);
 	//	for(i = 0; i < rows; i++)
 	//		for(j=0; j < columns; j++)
-	//			printf("%f\n", accessMat( culture, i, j )); 
+	//			printf("%f\n", accessMat( culture, i, j ));
 		#if !defined( CP_TABLON )
         timeNormalSpreadingL = omp_get_wtime() - timeNormalSpreadingL;
         timeNormalSpreadingT += timeNormalSpreadingL;
@@ -527,7 +476,7 @@ int main(int argc, char *argv[]) {
 					step_dead_cells ++;
 					continue;
 				}
-				if ( cells[i].storage < 1.0f ) {
+				else if ( cells[i].storage < 1.0f ) {
 					// Almost dying cell, it cannot move, only if enough food is dropped here it will survive
 					cells[i].storage -= 0.2f;
 				}
@@ -562,7 +511,7 @@ int main(int argc, char *argv[]) {
             }
 				/* 4.3.4. Annotate that there is one more cell in this culture position */
 				#pragma omp atomic
-				accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col ) += 1;
+				accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col ) ++;
 				/* 4.3.5. Annotate the amount of food to be shared in this culture position */
 				food_to_share[i] = accessMat( culture, cells[i].pos_row, cells[i].pos_col );
 		} // End cell movements
@@ -615,53 +564,129 @@ int main(int argc, char *argv[]) {
 			exit( EXIT_FAILURE );
 		}
 
-		int history_total_cells = 0;
 		int step_new_cells = 0;
-		#pragma omp parallel for shared(cells,step_new_cells) reduction(+:history_total_cells)
+		#pragma omp parallel for shared(cells,step_new_cells)
 		for (i=0; i<num_cells_alive; i++) {
 				/* 4.4.1. Food harvesting */
 				float food = food_to_share[i];
 				short count = accessMat( culture_cells, cells[i].pos_row, cells[i].pos_col );
 				float my_food = food / count;
-				cells[i].storage += my_food;
+				Cell *old = &cells[ i ];
+
+				old->storage += my_food;
 
 				/* 4.4.2. Split cell if the conditions are met: Enough maturity and energy */
-				if ( cells[i].age > 30 && cells[i].storage > 20 ) {
+				if ( old->age > 30 && old->storage > 20 ) {
 					// Split: Create new cell
-					history_total_cells ++;
 					int priv_new_cell;
 					//Se aumenta el numero de células nuevas y se guarda dicho valor, el cual es la posición en el vector new_cells
 					//Es una sección crítica ya que el valor de priv_new_cell tiene que ser step_new_cells + 1 e incrementar step_new_cells a la vez
 					#pragma omp atomic capture
 					priv_new_cell = step_new_cells++;
 
+					// Split energy stored and update age in both cells
+					old->storage /= 2.0f;
+					old->age = 1;
+
 					// New cell is a copy of parent cell
 					new_cells[ priv_new_cell ] = cells[i];
+					Cell *new = &new_cells[ priv_new_cell ];
 
-					// Split energy stored and update age in both cells
-					cells[i].storage /= 2.0f;
-					new_cells[ priv_new_cell ].storage /= 2.0f;
-					cells[i].age = 1;
-					new_cells[ priv_new_cell ].age = 1;
 
 					// Random seed for the new cell, obtained using the parent random sequence
-					new_cells[ priv_new_cell ].random_seq[0] = (unsigned short)nrand48( cells[i].random_seq );
-					new_cells[ priv_new_cell ].random_seq[1] = (unsigned short)nrand48( cells[i].random_seq );
-					new_cells[ priv_new_cell ].random_seq[2] = (unsigned short)nrand48( cells[i].random_seq );
+					new->random_seq[0] = (unsigned short)nrand48( old->random_seq );
+					new->random_seq[1] = (unsigned short)nrand48( old->random_seq );
+					new->random_seq[2] = (unsigned short)nrand48( old->random_seq );
 
 					// Both cells start in random directions
-					cell_new_direction( &cells[i] );
-					cell_new_direction( &new_cells[ priv_new_cell ] );
+					float angle = (float)(2 * M_PI * erand48( old->random_seq ));
+					old->mov_row = sinf( angle );
+					old->mov_col = cosf( angle );
+					angle = (float)(2 * M_PI * erand48( new->random_seq ));
+					new->mov_row = sinf( angle );
+					new->mov_col = cosf( angle );
 
 					// Mutations of the movement genes in both cells
-					cell_mutation( &cells[i] );
-					cell_mutation( &new_cells[ priv_new_cell ] );
+
+					/* 1. Select which genes change:
+						0 Left grows taking part of the Advance part
+						1 Advance grows taking part of the Left part
+						2 Advance grows taking part of the Right part
+						3 Right grows taking part of the Advance part
+					*/
+					int mutation_type = (int)(4 * erand48( old->random_seq ));
+					/* 2. Select the amount of mutation (up to 50%) */
+					float mutation_percentage = (float)(0.5 * erand48( old->random_seq ));
+					/* 3. Apply the mutation */
+					float mutation_value;
+					switch( mutation_type ) {
+						case 0:
+							mutation_value =old->choose_mov[1] * mutation_percentage;
+							old->choose_mov[1] -= mutation_value;
+							old->choose_mov[0] += mutation_value;
+							break;
+						case 1:
+							mutation_value = old->choose_mov[0] * mutation_percentage;
+							old->choose_mov[0] -= mutation_value;
+							old->choose_mov[1] += mutation_value;
+							break;
+						case 2:
+							mutation_value = old->choose_mov[2] * mutation_percentage;
+							old->choose_mov[1] += mutation_value;
+							break;
+						case 3:
+							mutation_value = old->choose_mov[1] * mutation_percentage;
+							old->choose_mov[1] -= mutation_value;
+							break;
+						default:
+							fprintf(stderr,"Error: Imposible type of mutation\n");
+							exit( EXIT_FAILURE );
+					}
+					/* 4. Correct potential precision problems */
+					old->choose_mov[2] = 1.0f - old->choose_mov[1] - old->choose_mov[0];
+
+					/* 1. Select which genes change:
+						0 Left grows taking part of the Advance part
+						1 Advance grows taking part of the Left part
+						2 Advance grows taking part of the Right part
+						3 Right grows taking part of the Advance part
+					*/
+					mutation_type = (int)(4 * erand48( new->random_seq ));
+					/* 2. Select the amount of mutation (up to 50%) */
+					mutation_percentage = (float)(0.5 * erand48( new->random_seq ));
+					/* 3. Apply the mutation */
+					mutation_value;
+					switch( mutation_type ) {
+						case 0:
+							mutation_value = new->choose_mov[1] * mutation_percentage;
+							new->choose_mov[1] -= mutation_value;
+							new->choose_mov[0] += mutation_value;
+							break;
+						case 1:
+							mutation_value = new->choose_mov[0] * mutation_percentage;
+							new->choose_mov[0] -= mutation_value;
+							new->choose_mov[1] += mutation_value;
+							break;
+						case 2:
+							mutation_value = new->choose_mov[2] * mutation_percentage;
+							new->choose_mov[1] += mutation_value;
+							break;
+						case 3:
+							mutation_value = new->choose_mov[1] * mutation_percentage;
+						  new->choose_mov[1] -= mutation_value;
+							break;
+						default:
+							fprintf(stderr,"Error: Imposible type of mutation\n");
+							exit( EXIT_FAILURE );
+					}
+					/* 4. Correct potential precision problems */
+					new->choose_mov[2] = 1.0f - new->choose_mov[1] - new->choose_mov[0];
 
 				}
-				accessMat( culture, cells[i].pos_row, cells[i].pos_col ) = 0.0f;
+				accessMat( culture, old->pos_row, old->pos_col ) = 0.0f;
 				//accessMat( culture, cells[i].pos_row, cells[i].pos_col ) = 0.0f;
 		} // End cell actions
-		sim_stat.history_total_cells += history_total_cells;
+		sim_stat.history_total_cells += step_new_cells;
  		#if !defined( CP_TABLON )
         timeCellActionsL = omp_get_wtime() - timeCellActionsL;
         timeCellActionsT += timeCellActionsL;
@@ -685,7 +710,7 @@ int main(int argc, char *argv[]) {
     	#if !defined( CP_TABLON )
 	      timeJoinCellsListL = omp_get_wtime();
 			#endif
-
+			#pragma omp parallel for
 			for (j=0; j<step_new_cells; j++)
 				cells[ num_cells + j ] = new_cells[ j ];
 
