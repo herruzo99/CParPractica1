@@ -453,7 +453,6 @@ int main(int argc, char *argv[]) {
 			exit( EXIT_FAILURE );
 		}
 
-
 			/* 4.3. Cell movements */
         // CellMovement Loop
 		#if !defined( CP_TABLON )
@@ -473,6 +472,7 @@ int main(int argc, char *argv[]) {
 				if ( cells[i].storage < 0.1f ) {
 					// Cell has died
 					cells[i].alive = false;
+					int priv_dead;
 					step_dead_cells ++;
 					continue;
 				}
@@ -536,11 +536,8 @@ int main(int argc, char *argv[]) {
 		#if !defined( CP_TABLON )
 				timeMovingAliveCellsL = omp_get_wtime();
 		#endif
-	int *desplazamiento = (int *)malloc( sizeof(int) * num_cells );
-	if ( desplazamiento == NULL ) {
-		fprintf(stderr,"-- Error allocating desplazamiento structures for size: %d \n", num_cells );
-		exit( EXIT_FAILURE );
-	}
+
+if(step_dead_cells !=0){
 		for( i=0; i<num_cells; i++ ) {
 			if ( cells[i].alive ) {
 				if ( free_position != i ) {
@@ -550,6 +547,7 @@ int main(int argc, char *argv[]) {
 				free_position ++;
 			}
 		}
+	}
 
 		#if !defined( CP_TABLON )
 				timeMovingAliveCellsL = omp_get_wtime() - timeMovingAliveCellsL;
