@@ -461,7 +461,7 @@ int main(int argc, char *argv[]) {
 	//	printf("ITER %d\n", iter);
 	//	for(i = 0; i < rows; i++)
 	//		for(j=0; j < columns; j++)
-	//			printf("%f\n", accessMat( culture, i, j ));
+	//			printf("%f\n", accessMat( culture, i, j )); 
 		#if !defined( CP_TABLON )
         timeNormalSpreadingL = omp_get_wtime() - timeNormalSpreadingL;
         timeNormalSpreadingT += timeNormalSpreadingL;
