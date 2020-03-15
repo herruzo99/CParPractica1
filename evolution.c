@@ -317,11 +317,17 @@ int main(int argc, char *argv[]) {
 	#endif
 	#pragma omp parallel for collapse(2)
 	for( i=0; i<rows; i++ )
-		for( j=0; j<columns; j++ )
+		for( j=0; j<columns; j++ ){
 			accessMat( culture, i, j ) = 0.0;
+			accessMat( culture_cells, i, j ) = 0;
+		}
 	#if !defined( CP_TABLON )
     timeInitCS = omp_get_wtime() - timeInitCS;
 	#endif
+
+
+
+
     // 3.2
 	#if !defined( CP_TABLON )
     timeInitCells = omp_get_wtime();
@@ -432,24 +438,11 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
-		/* 4.2. Prepare ancillary data structures */
-		/* 4.2.1. Clear ancillary structure of the culture to account alive cells in a position after movement */
-        //  ClearingStructure Loop
-		#if !defined( CP_TABLON )
-        timeClearingStructureL = omp_get_wtime();
-		#endif
-		#pragma omp parallel for collapse(2)
-		for( i=0; i<rows; i++ )
-			for( j=0; j<columns; j++ )
-				accessMat( culture_cells, i, j ) = 0.0f;
-		#if !defined( CP_TABLON )
-        timeClearingStructureL = omp_get_wtime() - timeClearingStructureL;
-        timeClearingStructureT += timeClearingStructureL;
-		#endif
+
 		/* 4.2.2. Allocate ancillary structure to store the food level to be shared by cells in the same culture place */
 		float *food_to_share = (float *)malloc( sizeof(float) * num_cells );
-		if ( culture == NULL || culture_cells == NULL ) {
-			fprintf(stderr,"-- Error allocating culture structures for size: %d x %d \n", rows, columns );
+		if (food_to_share == NULL ) {
+			fprintf(stderr,"-- Error allocating food structures for size: %d x %d \n", rows, columns );
 			exit( EXIT_FAILURE );
 		}
 
@@ -729,6 +722,7 @@ if(step_dead_cells !=0){
 		#pragma omp parallel for reduction(max:current_max_food) collapse(2)
 		for( i=0; i<rows; i++ )
 			for( j=0; j<columns; j++ ) {
+				accessMat( culture_cells, i, j ) = 0;
 				accessMat( culture, i, j ) *= 0.95f; // Reduce 5%
 				if ( accessMat( culture, i, j ) > current_max_food )
 					current_max_food = accessMat( culture, i, j );
